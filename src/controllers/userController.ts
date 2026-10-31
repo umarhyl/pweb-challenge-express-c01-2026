@@ -5,6 +5,7 @@ import prisma from "../config/prisma";
 import { HttpError } from "../utils/http-error";
 import { parseId } from "../utils/parse";
 import { sendSuccess } from "../utils/response";
+import { send } from "node:process";
 
 export const createUser = async (req: Request, res: Response) => {
   // Express 5: req.body = undefined jika body tidak ter-parse, jadi beri fallback {}
@@ -91,3 +92,33 @@ export const deleteUser = async (req: Request, res: Response) => {
 
   sendSuccess(res, 200, "User berhasil dihapus");
 };
+
+export const getuserPosts = async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.max(1, Number(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const publishedFilter = req.query.published === "true" ? true : req.query.published === "false" ? false : undefined;
+
+  const where = {
+    authorId: id,
+    ...(publishedFilter !== undefined && { published: publishedFilter}),
+  };
+
+  const [posts, total] = await Promise.all([
+    prisma.post.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {createdAt: "desc"}
+    }),
+    prisma.post.count({where}),
+  ]);
+  sendSuccess(res, 200, "Berhasil mengambil post user", posts, {
+    currentPage: page,
+    limit,
+    totalitems: total,
+    totalPages: Math.ceil(total/limit),
+  });
+}

@@ -118,3 +118,15 @@ export const deletePost = async (req: Request, res: Response) => {
 
   sendSuccess(res, 200, "Post berhasil dihapus");
 };
+
+export const getDailyStat = async (req: Request, res: Response) => {
+  const stats = await prisma.$queryRaw<Array<{date: Date; count: number}>>`
+    SELECT
+      DATE_TRUNC('day', "createdAt") AS date,
+      COUNT(*)::int AS count
+    FROM "Post"
+    GROUP BY DATE_TRUNC('day', "createdAt")
+    ORDER BY date DESC
+  `;
+  sendSuccess(res, 200, "berhasil", stats);
+}
